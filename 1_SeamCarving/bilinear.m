@@ -1,0 +1,49 @@
+%% read image
+im = imread('peppers.png');
+
+%% draw 2 copies of the image
+fig=figure('Units', 'pixel', 'Position', [100,100,1000,700], 'toolbar', 'none');
+subplot(121); imshow(im); title({'Input image'});
+subplot(122); himg = imshow(im*0); title({'Resized Image', 'Use the blue button to resize the input image'});
+hToolResize = uipushtool('CData', reshape(repmat([0 0 1], 100, 1), [10 10 3]), 'TooltipString', 'apply seam carving method to resize image', ...
+                        'ClickedCallback', @(~, ~) set(himg, 'cdata', bilinear_interpolation_image(im, size(im,1:2)-[0 100])));
+
+function im = bilinear_interpolation_image(im, sz)
+    newim = zeros(sz(1), sz(2), 3, 'uint8');
+    im_sz = size(im, 1, 2);
+    
+    getcolor = @(r, c) [im(r, c, 1) im(r, c, 2) im(r, c, 3)];
+
+    for i = 1:sz(1)
+        for j = 1:sz(2)
+            x = i / sz(1) * im_sz(1);
+            y = j / sz(2) * im_sz(2);
+            x_int = int32(x);
+            y_int = int32(y);
+
+            if x_int < 1 
+                x_int = 1;
+            end
+            if x_int >= im_sz(1)
+                x_int = im_sz(1)-1;
+            end
+            if y_int < 1 
+                y_int = 1;
+            end
+            if y_int >= im_sz(2)
+                y_int = im_sz(2)-1;
+            end
+            
+
+            new_color = double(getcolor(x_int, y_int)) * double(x_int+1 - x) * double(y_int+1 - y) ...
+                      + double(getcolor(x_int+1, y_int)) * double(x - x_int) * double(y_int+1 - y) ...
+                      + double(getcolor(x_int, y_int+1)) * double(x_int+1 - x) * double(y - y_int) ...
+                      + double(getcolor(x_int+1, y_int+1)) * double(x - x_int) * double(y - y_int);
+            for k = 1:3
+                newim(i, j, k) = uint8(new_color(k));
+            end
+            
+        end
+    end
+    im = newim;
+end
